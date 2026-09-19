@@ -1,0 +1,6 @@
+{
+  "type": "FeatureCollection",
+  "name": "isroads-curated",
+  "schema": "docs/trails-schema.md",
+  "features": []
+}
