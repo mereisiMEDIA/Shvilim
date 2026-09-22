@@ -1,6 +1,76 @@
 {
   "type": "FeatureCollection",
-  "name": "isroads-curated",
-  "schema": "docs/trails-schema.md",
-  "features": []
+  "note": "זרע קטן ומאומת של יעדים אמיתיים. האפליקציה מוסיפה עליו עוד יעדים חיים מ-OpenStreetMap וויקיפדיה סביב המיקום שלך. קואורדינטות אומתו מול ערכי ויקיפדיה/מכלול או GeoNames (ראה 'source' בכל פריט).",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "עין חוקוק",
+        "type": "מעיין",
+        "description": "מעיין הנובע בגליל התחתון ליד קיבוץ חוקוק, סמוך לכביש 65. מבנה אבן היסטורי מתקופת המנדט.",
+        "source": "he.wikipedia.org / hamichlol - עין חוקוק"
+      },
+      "geometry": { "type": "Point", "coordinates": [35.4836, 32.8842] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "עין חושניה",
+        "type": "מעיין",
+        "description": "קבוצת נביעות במרכז רמת הגולן, בתחומי שמורת אירוס חושניה, בגובה כ-790 מ'.",
+        "source": "he.wikipedia.org / hamichlol - עין ח'ושניה"
+      },
+      "geometry": { "type": "Point", "coordinates": [35.82505, 33.00282] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "עין חשרת",
+        "type": "מעיין",
+        "description": "מעיין שכבה בגדה הצפונית של נחל השופט, ברמות מנשה, עם ניקבות חצובות בסלע.",
+        "source": "he.wikipedia.org / hamichlol - עין חשרת"
+      },
+      "geometry": { "type": "Point", "coordinates": [35.11344, 32.63962] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "עין משואות",
+        "type": "מעיין",
+        "description": "מעיין שכבה בהרי יהודה, בגוש עציון, ליד היישוב בת עין.",
+        "source": "he.wikipedia.org / hamichlol - עין משואות"
+      },
+      "geometry": { "type": "Point", "coordinates": [35.1022, 31.6576] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "עין הבשור",
+        "type": "מעיין",
+        "description": "מעיין שופע בתחום גן לאומי אשכול בנגב המערבי, לאורך נחל הבשור.",
+        "source": "he.wikipedia.org / hamichlol - עין הבשור"
+      },
+      "geometry": { "type": "Point", "coordinates": [34.492671, 31.307714] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "מכתש רמון - תצפית",
+        "type": "תצפית",
+        "description": "תצפית על מכתש רמון מאזור מרכז המבקרים במצפה רמון. שמורת אור כוכבים בינלאומית.",
+        "source": "GeoNames NGA - מצפה רמון (מרכז היישוב, קירוב לאזור התצפית)"
+      },
+      "geometry": { "type": "Point", "coordinates": [34.801501, 30.612367] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "מצדה",
+        "type": "אתר מורשת",
+        "description": "מבצר עתיק על צוק מבודד במדבר יהודה, משקיף על ים המלח. אתר מורשת עולמית של אונסק\"ו.",
+        "source": "he.wikipedia.org - מצדה"
+      },
+      "geometry": { "type": "Point", "coordinates": [35.35389, 31.31556] }
+    }
+  ]
 }

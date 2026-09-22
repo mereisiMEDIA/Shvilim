@@ -1,124 +1,87 @@
-/* ISROAD'S service worker: app shell + libraries + map tiles work offline after the first visit. */
-const SHELL = 'shvil-shell-v6';
-const LIBS = 'shvil-libs-v1';
-const TILES = 'shvil-tiles-v1'; // shared with src/ui/offline.ts
-const MAX_TILE_ENTRIES = 3000;
+/* ISROAD'S (Leaflet build) service worker.
+ * Design choice that matters here: the app shell (index.html / app.js / style.css / trails.geojson)
+ * is served NETWORK-FIRST, so a new deploy is picked up on the very next load instead of being
+ * masked by a stale cache - this is what caused "still shows the old version" earlier in this project.
+ * Only the immutable stuff (map tiles, the Leaflet library) is cache-first.
+ */
+const SHELL_CACHE = 'isroads-leaflet-shell-v1';
+const TILE_CACHE = 'isroads-leaflet-tiles-v1';
+const LIB_CACHE = 'isroads-leaflet-libs-v1';
+const MAX_TILES = 2000;
 
-const SHELL_FILES = ['./', './index.html', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './favicon.png', './trails.geojson'];
-const LIB_HOSTS = ['unpkg.com', 'cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
-const TILE_HOSTS = [
-  'server.arcgisonline.com', 'tile.openstreetmap.org', 'tile.opentopomap.org', 'israelhiking.osm.org.il',
-  'tile.waymarkedtrails.org', 'tile-cyclosm.openstreetmap.fr',
-];
-const hostIn = (url, list) => list.some((h) => url.hostname === h || url.hostname.endsWith('.' + h));
+const SHELL_FILES = ['./', './index.html', './app.js', './geo.js', './drive.js', './style.css', './trails.geojson', './manifest.webmanifest'];
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    (async () => {
-      const c = await caches.open(SHELL);
-      await Promise.allSettled(SHELL_FILES.map((f) => c.add(f)));
-      // also warm the CDN libraries the page asks for (best effort; they are cached on first use anyway)
-      self.skipWaiting();
-    })()
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(SHELL_CACHE).then((c) => c.addAll(SHELL_FILES)).catch(() => {}).then(() => self.skipWaiting())
   );
 });
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
     (async () => {
-      for (const k of await caches.keys()) if (k.startsWith('shvil-shell-') && k !== SHELL) await caches.delete(k);
+      const keep = new Set([SHELL_CACHE, TILE_CACHE, LIB_CACHE]);
+      for (const key of await caches.keys()) {
+        if (!keep.has(key)) await caches.delete(key); // drop caches from any earlier build at this origin
+      }
       await self.clients.claim();
     })()
   );
 });
 
-async function networkFirst(req, cacheName, timeoutMs = 4000) {
+async function networkFirst(req, cacheName) {
   const cache = await caches.open(cacheName);
   try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), timeoutMs);
-    const res = await fetch(req, { signal: ctrl.signal });
-    clearTimeout(t);
+    const res = await fetch(req);
     if (res && res.ok) cache.put(req, res.clone());
     return res;
-  } catch (_) {
-    const hit = (await cache.match(req)) || (await cache.match('./index.html'));
+  } catch (e) {
+    const hit = await cache.match(req);
     if (hit) return hit;
-    throw _;
+    throw e;
   }
 }
 
-async function staleWhileRevalidate(req, cacheName) {
-  const cache = await caches.open(cacheName);
-  const hit = await cache.match(req);
-  const net = fetch(req).then((res) => {
-    if (res && res.ok) cache.put(req, res.clone());
-    return res;
-  }).catch(() => null);
-  return hit || (await net) || Response.error();
-}
-
-async function cacheFirst(req, cacheName) {
+async function cacheFirst(req, cacheName, cap) {
   const cache = await caches.open(cacheName);
   const hit = await cache.match(req);
   if (hit) return hit;
   const res = await fetch(req);
-  if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone());
+  if (res && (res.ok || res.type === 'opaque')) {
+    cache.put(req, res.clone());
+    if (cap) trimCache(cache, cap);
+  }
   return res;
 }
 
-async function tileFetch(req) {
-  const cache = await caches.open(TILES);
-  const hit = await cache.match(req);
-  if (hit) return hit;
-  try {
-    const res = await fetch(req);
-    if (res && res.ok && res.type !== 'opaque') {
-      cache.put(req, res.clone());
-      trimTiles(cache);
-    }
-    return res;
-  } catch (e) {
-    return new Response('', { status: 504, statusText: 'offline' });
-  }
-}
-
 let trimming = false;
-async function trimTiles(cache) {
+async function trimCache(cache, cap) {
   if (trimming) return;
   trimming = true;
   try {
     const keys = await cache.keys();
-    if (keys.length > MAX_TILE_ENTRIES) for (const k of keys.slice(0, keys.length - MAX_TILE_ENTRIES)) await cache.delete(k);
+    if (keys.length > cap) for (const k of keys.slice(0, keys.length - cap)) await cache.delete(k);
   } finally {
     trimming = false;
   }
 }
 
-self.addEventListener('fetch', (e) => {
-  const req = e.request;
-  if (req.method !== 'GET') return; // Overpass POST etc. are never cached here
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
   if (url.origin === self.location.origin) {
-    if (req.mode === 'navigate' || url.pathname.endsWith('/trails.geojson')) {
-      e.respondWith(networkFirst(req, SHELL));
-    } else {
-      e.respondWith(staleWhileRevalidate(req, SHELL));
-    }
+    event.respondWith(networkFirst(req, SHELL_CACHE));
     return;
   }
-  e.respondWith(
-    (async () => {
-      // an offline-area tile (or any tile we saved) wins over the network, whatever host it comes from
-      const tiles = await caches.open(TILES);
-      const saved = await tiles.match(req);
-      if (saved) return saved;
-      // any cross-origin script / stylesheet / font (MapLibre, Turf, Tailwind, web fonts): cached on first use
-      if (hostIn(url, LIB_HOSTS) || ['script', 'style', 'font'].includes(req.destination)) return cacheFirst(req, LIBS);
-      if (hostIn(url, TILE_HOSTS)) return tileFetch(req);
-      // routing / search / overpass GET: straight to the network (the app has its own timeouts, retries and caches)
-      return fetch(req);
-    })()
-  );
+  if (url.hostname.endsWith('tile.openstreetmap.org')) {
+    event.respondWith(cacheFirst(req, TILE_CACHE, MAX_TILES));
+    return;
+  }
+  if (url.hostname === 'unpkg.com') {
+    event.respondWith(cacheFirst(req, LIB_CACHE));
+    return;
+  }
+  // Overpass / Wikipedia / Waze: always live, never cached
 });
