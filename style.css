@@ -37,24 +37,58 @@ button { cursor: pointer; font-family: inherit; }
 .app-header {
   position: absolute;
   top: max(12px, env(safe-area-inset-top));
-  left: 50%;
-  transform: translateX(-50%);
+  right: 12px;
   z-index: 20;
-  background: rgba(20, 22, 28, 0.92);
-  padding: 8px 18px;
+  background: rgba(20, 22, 28, 0.94);
+  padding: 7px 10px 7px 14px;
   border-radius: 16px;
-  text-align: center;
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 9px;
   box-shadow: 0 4px 14px rgba(0,0,0,0.35);
   pointer-events: none;
-  max-width: 90vw;
+  max-width: calc(100vw - 84px);
 }
-.app-header h1 { font-size: 1.05rem; color: var(--text); }
-.app-header p { font-size: 0.68rem; color: var(--amber); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand-logo {
+  width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--amber), var(--orange));
+  color: #1b1000; font-weight: 900; font-size: 0.9rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.brand-text { min-width: 0; line-height: 1.15; }
+.brand-title { font-size: 1rem; font-weight: 900; color: var(--text); white-space: nowrap; }
+.brand-badge {
+  font-size: 0.62rem; font-weight: 800; color: var(--amber);
+  border: 1px solid rgba(245,165,36,0.6); border-radius: 6px; padding: 1px 5px; margin-right: 4px;
+  vertical-align: middle;
+}
+.brand-sub { font-size: 0.66rem; color: var(--mute); white-space: nowrap; }
+.brand-sub b { color: var(--amber); font-weight: 800; letter-spacing: 0.3px; }
+.version-tag {
+  position: absolute;
+  top: max(2px, env(safe-area-inset-top));
+  left: 8px;
+  z-index: 21;
+  font-size: 9px;
+  color: rgba(255,255,255,0.45);
+  pointer-events: none;
+}
+.sheet-footer {
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 0.62rem;
+  line-height: 1.5;
+  color: #6f7787;
+  padding: 6px 12px 8px;
+  border-top: 1px solid var(--line);
+}
+.sheet-footer b { color: var(--amber); }
 
 /* ---------- status banner ---------- */
 .status-banner {
   position: absolute;
-  top: calc(max(12px, env(safe-area-inset-top)) + 56px);
+  top: calc(max(12px, env(safe-area-inset-top)) + 58px);
   left: 12px;
   right: 12px;
   z-index: 25;
@@ -353,25 +387,38 @@ button { cursor: pointer; font-family: inherit; }
   border-radius: 16px;
   padding: 10px 12px;
   display: flex;
-  align-items: center;
-  gap: 16px;
+  flex-direction: column;
+  gap: 10px;
   box-shadow: 0 -4px 16px rgba(0,0,0,0.4);
 }
+.metrics-row { display: flex; align-items: center; gap: 16px; }
+.actions-row { display: flex; gap: 8px; }
 .metric { text-align: center; line-height: 1.1; }
 .metric b { display: block; font-size: 1.25rem; font-weight: 900; }
 .metric span { font-size: 0.65rem; color: var(--mute); }
+.waze-track-btn {
+  flex: 1;
+  background: #162033;
+  border: 1px solid #3b82f6;
+  color: #bcd6ff;
+  border-radius: 12px;
+  padding: 10px 8px;
+  font-weight: 800;
+  font-size: 0.82rem;
+}
 .stop-drive-btn {
-  margin-right: auto;
+  flex: 1;
   background: var(--red);
   color: #fff;
   border: none;
   border-radius: 12px;
-  padding: 10px 16px;
+  padding: 10px 8px;
   font-weight: 800;
   font-size: 0.85rem;
 }
 
 body.driving .app-header,
+body.driving .version-tag,
 body.driving .locate-button,
 body.driving .browse-sheet,
 body.driving #status-banner { display: none; }

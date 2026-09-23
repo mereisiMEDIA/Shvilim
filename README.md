@@ -80,3 +80,40 @@ No automatic road-to-trailhead routing (drive to a point still hands off to Waze
 point). The full road-then-track composite routing engine is the bigger, separately-built React/MapLibre
 project (`shvilim-source.zip` from earlier in this conversation) - this Leaflet build now has its own,
 independently-implemented live navigation, but not that road-routing piece.
+
+
+## v13: fixed after real-world testing (junk tracks + broken off-route guidance)
+Two concrete bugs reported after trying v12 in the field near Gedera:
+
+1. **Irrelevant "trails".** The tracks list showed a short (~500m), asphalt-surfaced OSM
+   `highway=track` fragment right next to a highway interchange - not a real 4x4 trail. Fixed:
+   `buildTracksFromOverpass()` now excludes paved-surface tracks and anything under 600m, and lists
+   named tracks (far more likely to be a real, known trail) before unnamed ones. Unnamed tracks are
+   still available behind a "הצג גם X שבילים ללא שם" toggle - nothing real is hidden, just deprioritized.
+   Covered by 3 new tests in `tests/tracks.test.js`, including the exact reported scenario (a short
+   paved track near a highway) reproduced and confirmed excluded.
+
+2. **Off-route guidance told you to follow a line that was never drawn.** When far from a trail, the
+   instruction said "follow the dashed blue line on the map" - but no such line was ever rendered, only
+   the trail itself (in orange). Fixed: `drive.js` now actually draws a dashed blue connector from your
+   position to the nearest point on the trail whenever you're off-route, the instruction includes a
+   compass direction ("לכיוון דרום-מזרח"), and a "Waze עד השביל" button appears as a fallback. Verified
+   end-to-end: reproduced the exact scenario (1.1km from the trail) and confirmed the line is drawn, the
+   text matches, and a Waze button appears.
+
+Also fixed while investigating: starting live navigation now immediately uses the position already known
+from the main GPS watcher instead of waiting for a second `watchPosition` round-trip, which had caused a
+several-second delay before the first status appeared.
+
+## v14: branding restored + full QA pass
+- MEREISI GROUP credit restored: header ("מבית MEREISI GROUP"), sheet footer, manifest, meta author.
+  Hidden only while driving (the drive screen stays clean). OSM/Wikipedia attribution now visible.
+- QA fixes: category chips now cover every type (waterfalls/streams under water, memorials/caves
+  under sites, picnic under camp, new "טבע" chip); same place from two sources shown once; "nothing
+  nearby" no longer shown as a server error; OSM track names HTML-escaped; back button / close
+  buttons keep browser history in sync; a trail is driven from the end nearest to you (before: starting
+  at the far end declared "arrived" instantly); arrival stops the drive exactly once; off-route
+  directions reworded so the compass direction is clearly the way BACK to the trail.
+- Tested: 34 unit tests + browser QA at 390px (layout, branding, chips, dedupe, XSS, history,
+  orientation, off-route line, arrival) + monkey tests, all passing. Not tested: real servers, real
+  device GPS, real Leaflet rendering (a stub was used in automated tests).

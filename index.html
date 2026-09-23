@@ -8,7 +8,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>ISROAD'S - מפת שבילים</title>
-    <meta name="description" content="ISROAD'S - יעדי שטח בישראל: מעיינות, תצפיות ואתרים. מבית MEREISI GROUP">
+    <meta name="description" content="ISROAD'S - ניווט שטח 4x4 בישראל: שבילי עפר, מעיינות, תצפיות ואתרים. מבית MEREISI GROUP">
+    <meta name="author" content="MEREISI GROUP">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -23,9 +24,13 @@
 
     <!-- כותרת צפה (UI) -->
     <header class="app-header">
-        <h1>ISROAD'S שבילים</h1>
-        <p>גרסה 12 · ניווט חי על שבילים אמיתיים</p>
+        <div class="brand-logo">IS</div>
+        <div class="brand-text">
+            <div class="brand-title">ISROAD'S <span class="brand-badge">שטח 4x4</span></div>
+            <div class="brand-sub">מבית <b>MEREISI GROUP</b></div>
+        </div>
     </header>
+    <div id="version-tag" class="version-tag">גרסה 14</div>
 
     <!-- באנר שגיאה/מצב, מוצג רק כשצריך -->
     <div id="status-banner" class="status-banner hidden" role="status">
@@ -51,10 +56,11 @@
             </div>
             <div id="category-chips" class="chip-row">
                 <button class="chip active" data-cat="all">הכול</button>
-                <button class="chip" data-cat="מעיין">💧 מים</button>
-                <button class="chip" data-cat="תצפית">🔭 נוף</button>
-                <button class="chip" data-cat="אתר מורשת">🏛️ אתרים</button>
-                <button class="chip" data-cat="חניון לילה">⛺ חניה</button>
+                <button class="chip" data-cat="water">💧 מים</button>
+                <button class="chip" data-cat="view">🔭 נוף</button>
+                <button class="chip" data-cat="nature">🌿 טבע</button>
+                <button class="chip" data-cat="sites">🏛️ אתרים</button>
+                <button class="chip" data-cat="camp">⛺ חניה</button>
             </div>
             <div id="dest-count" class="dest-count"></div>
             <ul id="dest-list" class="dest-list"></ul>
@@ -65,6 +71,10 @@
             <div id="tracks-count" class="dest-count"></div>
             <ul id="tracks-list" class="dest-list"></ul>
         </div>
+        <footer class="sheet-footer">
+            פותח ע״י <b>MEREISI GROUP</b> · ISROAD'S<br>
+            נתוני מפה ושבילים: © OpenStreetMap contributors · יעדים: ויקיפדיה (CC BY-SA)
+        </footer>
     </div>
 
     <!-- מסך ניווט חי: מוצג בזמן ניווט/הדמיה, מסתיר את שאר הממשק -->
@@ -88,10 +98,15 @@
             <button class="sim-speed" data-mult="4">×4</button>
         </div>
         <div id="drive-metrics" class="drive-metrics">
-            <div class="metric"><b id="m-remain">—</b><span>נותר</span></div>
-            <div class="metric"><b id="m-off">0</b><span>סטייה מ׳</span></div>
-            <div class="metric"><b id="m-speed">0</b><span>קמ״ש</span></div>
-            <button id="btn-stop-drive" class="stop-drive-btn">✕ עצור ניווט</button>
+            <div class="metrics-row">
+                <div class="metric"><b id="m-remain">—</b><span>נותר</span></div>
+                <div class="metric"><b id="m-off">0</b><span>סטייה מ׳</span></div>
+                <div class="metric"><b id="m-speed">0</b><span>קמ״ש</span></div>
+            </div>
+            <div class="actions-row">
+                <button id="btn-waze-to-track" class="waze-track-btn hidden">Waze עד השביל</button>
+                <button id="btn-stop-drive" class="stop-drive-btn">✕ עצור ניווט</button>
+            </div>
         </div>
     </div>
 

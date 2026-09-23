@@ -4,7 +4,7 @@
  * masked by a stale cache - this is what caused "still shows the old version" earlier in this project.
  * Only the immutable stuff (map tiles, the Leaflet library) is cache-first.
  */
-const SHELL_CACHE = 'isroads-leaflet-shell-v1';
+const SHELL_CACHE = 'isroads-leaflet-shell-v2';
 const TILE_CACHE = 'isroads-leaflet-tiles-v1';
 const LIB_CACHE = 'isroads-leaflet-libs-v1';
 const MAX_TILES = 2000;

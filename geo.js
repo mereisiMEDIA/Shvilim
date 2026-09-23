@@ -262,6 +262,8 @@ NavEngine.prototype.update = function (fix) {
   const state = {
     status: finalStatus,
     display: display,
+    nearestOnLine: proj.point, // always available, even when off_route - used to draw a way back
+    bearingToLine: Math.round(bearingLngLat([pos.lng, pos.lat], proj.point)),
     offTrackM: Math.round(off),
     alongM: Math.round(along),
     distRemainingM: Math.round(remaining),
@@ -278,14 +280,19 @@ NavEngine.prototype.update = function (fix) {
   return state;
 };
 
+function compassHe(deg360) {
+  const dirs = ['צפון', 'צפון-מזרח', 'מזרח', 'דרום-מזרח', 'דרום', 'דרום-מערב', 'מערב', 'צפון-מערב'];
+  return dirs[Math.round((((deg360 % 360) + 360) % 360) / 45) % 8];
+}
+
 NavEngine.prototype._instruct = function (s) {
   if (s.status === 'arrived') return { kind: 'arrive', text: 'הגעת ליעד! כל הכבוד' };
   if (s.status === 'wrong_way') return { kind: 'wrong_way', text: 'נסיעה בכיוון הפוך לשביל — פנה פרסה' };
   if (s.status === 'off_route') {
     const km = s.offTrackM >= 950 ? (s.offTrackM / 1000).toFixed(1) + ' ק״מ' : Math.round(s.offTrackM / 10) * 10 + ' מ׳';
-    return { kind: 'off_route', text: 'רחוק ' + km + ' מהשביל — חזור לקו הכחול במפה' };
+    return { kind: 'off_route', text: 'השביל נמצא ' + km + ' ממך, לכיוון ' + compassHe(s.bearingToLine) + ' — עקוב אחרי הקו הכחול המקווקו' };
   }
-  if (s.status === 'returning') return { kind: 'return', text: 'סטית ' + s.offTrackM + ' מ׳ מהשביל — חזור לקו' };
+  if (s.status === 'returning') return { kind: 'return', text: 'סטית ' + s.offTrackM + ' מ׳ מהשביל — חזור לכיוון ' + compassHe(s.bearingToLine) };
   if (s.status === 'deviated') return { kind: 'correct', text: 'סטייה קלה: ' + s.offTrackM + ' מ׳ מהשביל' };
   return { kind: 'stay', text: 'הישאר על הקו' };
 };
@@ -419,20 +426,29 @@ function stitchTrackWays(ways) {
   return chains;
 }
 
-/** Overpass JSON (way elements with tags+geometry) -> real, stitched trail objects. Min length 300m. */
+const PAVED_SURFACE = new Set(['asphalt', 'paved', 'concrete', 'paving_stones', 'concrete:plates', 'sett']);
+const MIN_TRACK_M = 600; // below this a "track" is almost always a short stub/driveway/maintenance path, not a real 4x4 trail
+
+/** Overpass JSON (way elements with tags+geometry) -> real, stitched, RELEVANT trail objects.
+ *  Filters out: private/no-access ways, paved "tracks" (maintenance/drainage roads next to highways
+ *  are frequently tagged highway=track + surface=asphalt/concrete), and anything under 600m - these
+ *  are the short irrelevant fragments that showed up before this fix. Named tracks are listed first
+ *  since a name is the strongest signal that it is a real, known trail rather than a random fragment;
+ *  unnamed ones are still included (flagged honestly) so nothing real gets hidden. */
 function buildTracksFromOverpass(json, center) {
   const ways = [];
   for (const el of json.elements || []) {
     if (el.type !== 'way' || !Array.isArray(el.geometry) || el.geometry.length < 2) continue;
     const tags = el.tags || {};
     if (tags.access === 'no' || tags.access === 'private' || tags.motor_vehicle === 'no') continue;
+    if (tags.surface && PAVED_SURFACE.has(tags.surface)) continue; // not actually off-road
     ways.push({ id: el.id, tags, pts: el.geometry.map((g) => [g.lon, g.lat]) });
   }
   const chains = stitchTrackWays(ways);
   const out = [];
   chains.forEach((chain, idx) => {
     const line = makeLine(chain.pts);
-    if (line.total < 300) return;
+    if (line.total < MIN_TRACK_M) return;
     const named = chain.members.find((m) => m.tags['name:he'] || m.tags.name);
     const rawName = named ? named.tags['name:he'] || named.tags.name : '';
     const km = Math.round((line.total / 100)) / 10;
@@ -445,11 +461,14 @@ function buildTracksFromOverpass(json, center) {
       nearestM: center ? projectOnLine(line, center).dist : null,
     });
   });
-  out.sort((a, b) => (a.nearestM || 0) - (b.nearestM || 0));
+  // named tracks first (far more likely to be a real, known trail), each group sorted by distance
+  out.sort((a, b) => (a.unnamed === b.unnamed ? 0 : a.unnamed ? 1 : -1) || (a.nearestM || 0) - (b.nearestM || 0));
   return out;
 }
 
 if (typeof module !== 'undefined') {
   module.exports.stitchTrackWays = stitchTrackWays;
   module.exports.buildTracksFromOverpass = buildTracksFromOverpass;
+  module.exports.compassHe = compassHe;
+  module.exports.bearingLngLat = bearingLngLat;
 }

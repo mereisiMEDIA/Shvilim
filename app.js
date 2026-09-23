@@ -9,6 +9,7 @@ let map;
 let userMarker = null;
 let userAccuracyCircle = null;
 let userCoord = null; // {lat, lng} - null until a real GPS fix arrives
+let lastKnownAccuracy = null;
 let watchId = null;
 
 let currentDestination = null; // for the details panel + Waze
@@ -81,6 +82,7 @@ function startGeolocation(showDeniedMessage) {
   const onFix = (pos) => {
     const first = !userCoord;
     userCoord = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    lastKnownAccuracy = pos.coords.accuracy;
     updateUserMarker(pos.coords.accuracy);
     document.getElementById('locate-btn').classList.add('active');
     if (first) {
@@ -115,6 +117,10 @@ function updateUserMarker(accuracyM) {
 /* =====================================================================================
    Loading destinations: seed file first (instant), then live sources (progressive)
    ===================================================================================== */
+function normName(n) {
+  return String(n).replace(/["'׳״()\-–]/g, '').replace(/\s+/g, ' ').trim();
+}
+
 function addFeaturesToDestinations(features, sourceLabel) {
   let added = 0;
   for (const f of features) {
@@ -124,7 +130,8 @@ function addFeaturesToDestinations(features, sourceLabel) {
     const point = navPointForGeometry(f.geometry, userCoord);
     if (!point) continue;
     const key = dedupeKey(name, point);
-    if (allDestinations.some((d) => d.key === key)) continue;
+    const norm = normName(name);
+    if (allDestinations.some((d) => d.key === key || (normName(d.name) === norm && haversineKm(d, point) < 1.5))) continue;
     allDestinations.push({
       key,
       name,
@@ -260,7 +267,7 @@ function loadLiveDestinations(center) {
     })
     .catch((err) => {
       console.warn('OSM (Overpass) load failed:', err);
-      return 0;
+      return -1; // failed (not the same as "found nothing")
     });
 
   const wikiPromise = fetch(
@@ -298,19 +305,21 @@ function loadLiveDestinations(center) {
     })
     .catch((err) => {
       console.warn('Wikipedia load failed:', err);
-      return 0;
+      return -1;
     });
 
-  Promise.allSettled([osmPromise, wikiPromise]).then((results) => {
-    const total = results.reduce((a, r) => a + (r.status === 'fulfilled' ? r.value : 0), 0);
-    const bothFailed = results.every((r) => r.status === 'rejected' || r.value === 0) && total === 0;
+  Promise.all([osmPromise, wikiPromise]).then(([osm, wiki]) => {
+    const bothFailed = osm < 0 && wiki < 0;
+    const total = Math.max(0, osm) + Math.max(0, wiki);
     if (bothFailed) {
       showStatus('לא הצלחתי לטעון יעדים חיים (אין אינטרנט או שהשרת עמוס). מוצגים היעדים המקומיים בלבד.', {
         error: true,
         onRetry: () => loadLiveDestinations(center),
       });
+    } else if (total === 0) {
+      showStatus('לא נמצאו יעדים נוספים ברדיוס 15 ק״מ ממך.', { autoHideMs: 4000 });
     } else {
-      showStatus(`נטענו ${total} יעדים נוספים.`, { autoHideMs: 3000 });
+      showStatus(`נטענו ${total} יעדים נוספים באזור שלך.`, { autoHideMs: 3000 });
     }
   });
 }
@@ -318,10 +327,24 @@ function loadLiveDestinations(center) {
 /* =====================================================================================
    Markers + list rendering
    ===================================================================================== */
+// every type the app can produce (seed / OSM / Wikipedia) belongs to exactly one chip group
+const TYPE_GROUP = {
+  'מעיין': 'water', 'מפל': 'water', 'נחל': 'water',
+  'תצפית': 'view',
+  'שמורת טבע': 'nature',
+  'אתר מורשת': 'sites', 'אנדרטה': 'sites', 'מערה': 'sites',
+  'חניון לילה': 'camp', 'פינת שהייה': 'camp',
+};
+function groupOf(type) { return TYPE_GROUP[type] || 'sites'; }
+
 function matchesFilter(d) {
-  if (activeCategory !== 'all' && d.type !== activeCategory) return false;
+  if (activeCategory !== 'all' && groupOf(d.type) !== activeCategory) return false;
   if (searchText && !d.name.includes(searchText) && !d.type.includes(searchText)) return false;
   return true;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 function emojiFor(type) {
@@ -435,19 +458,33 @@ function openLocationDetails(d) {
   document.getElementById('location-details').classList.remove('hidden');
   document.getElementById('browse-sheet').classList.add('collapsed');
   map.flyTo([d.lat, d.lng], 14);
-  history.pushState({ isroadsDetail: true }, '');
+  if (!detailHistoryPushed) {
+    history.pushState({ isroadsDetail: true }, '');
+    detailHistoryPushed = true;
+  }
 }
 
-function closeLocationDetails() {
+let detailHistoryPushed = false;
+function hideDetailsPanel() {
   document.getElementById('location-details').classList.add('hidden');
   document.getElementById('browse-sheet').classList.remove('collapsed');
   currentDestination = null;
 }
+// on-screen "חזור למפה": close AND consume the history entry we pushed, so the phone's back
+// button afterwards behaves normally (no "dead" back press)
+function closeLocationDetails() {
+  hideDetailsPanel();
+  if (detailHistoryPushed) {
+    detailHistoryPushed = false;
+    history.back();
+  }
+}
 
 // phone/browser back closes the details panel instead of leaving the app
 window.addEventListener('popstate', () => {
-  if (!document.getElementById('location-details').classList.contains('hidden')) {
-    closeLocationDetails();
+  if (detailHistoryPushed) {
+    detailHistoryPushed = false;
+    hideDetailsPanel();
   }
 });
 
