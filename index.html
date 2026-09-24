@@ -1,145 +1,87 @@
-<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#111318">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>ISROAD'S - מפת שבילים</title>
-    <meta name="description" content="ISROAD'S - ניווט שטח 4x4 בישראל: שבילי עפר, מעיינות, תצפיות ואתרים. מבית MEREISI GROUP">
-    <meta name="author" content="MEREISI GROUP">
-    <link rel="manifest" href="manifest.webmanifest">
-    <link rel="icon" type="image/png" href="favicon.png">
-    <link rel="apple-touch-icon" href="icon-192.png">
+<!doctype html>
+<html lang="he" dir="rtl" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0c10" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>ISROAD'S | ניווט שטח 4x4</title>
+    <meta name="description" content="ניווט שטח 4x4 בישראל: כביש עד כניסת השטח, ואז עקיבת ציר." />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css'" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+/* High-contrast tactical off-road styling */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #0a0c10;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Heebo', sans-serif;
+}
 
-    <!-- CSS של ספריית המפות Leaflet -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <!-- אזור המפה -->
-    <div id="map-container"></div>
+.maplibregl-canvas {
+  outline: none !important;
+}
 
-    <!-- כותרת צפה (UI) -->
-    <header class="app-header">
-        <div class="brand-logo">IS</div>
-        <div class="brand-text">
-            <div class="brand-title">ISROAD'S <span class="brand-badge">שטח 4x4</span></div>
-            <div class="brand-sub">מבית <b>MEREISI GROUP</b></div>
-        </div>
-    </header>
-    <div id="version-tag" class="version-tag">גרסה 14</div>
+/* Custom scrollbar for trail lists */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #12141c;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a3042;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3f4760;
+}
+    </style>
+  </head>
+  <body class="bg-[#0f1115] text-[#f3f4f6] antialiased overflow-hidden select-none">
+    <div id="root"></div>
+    <div id="boot-msg" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0a0c10;color:#e5e7eb;font-family:system-ui,sans-serif;font-size:15px;text-align:center;padding:24px;z-index:99">טוען את ISROAD'S…</div>
+    <div id="build-tag" style="position:fixed;top:1px;left:6px;z-index:5;font:9px system-ui,sans-serif;color:rgba(255,255,255,.5);pointer-events:none">גרסה 15 · 24.09</div>
 
-    <!-- באנר שגיאה/מצב, מוצג רק כשצריך -->
-    <div id="status-banner" class="status-banner hidden" role="status">
-        <span id="status-text"></span>
-        <button id="status-retry" class="status-retry hidden">נסה שוב</button>
-        <button id="status-dismiss" class="status-dismiss" aria-label="סגור">✕</button>
-    </div>
-
-    <!-- כפתור מיקום -->
-    <button id="locate-btn" class="locate-button" aria-label="מקם אותי" title="מקם אותי">📍</button>
-
-    <!-- מסך תחתון: חיפוש, יעדים ושבילי שטח לניווט חי -->
-    <div id="browse-sheet" class="browse-sheet">
-        <div class="sheet-handle"></div>
-        <div class="tab-row">
-            <button class="tab active" data-tab="dest">📍 יעדים</button>
-            <button class="tab" data-tab="tracks">🛞 שבילי שטח לניווט חי</button>
-        </div>
-
-        <div id="dest-tab" class="tab-panel">
-            <div class="search-row">
-                <input id="search-input" type="search" placeholder="חפש יעד: מעיין, תצפית, אתר…" autocomplete="off">
-            </div>
-            <div id="category-chips" class="chip-row">
-                <button class="chip active" data-cat="all">הכול</button>
-                <button class="chip" data-cat="water">💧 מים</button>
-                <button class="chip" data-cat="view">🔭 נוף</button>
-                <button class="chip" data-cat="nature">🌿 טבע</button>
-                <button class="chip" data-cat="sites">🏛️ אתרים</button>
-                <button class="chip" data-cat="camp">⛺ חניה</button>
-            </div>
-            <div id="dest-count" class="dest-count"></div>
-            <ul id="dest-list" class="dest-list"></ul>
-        </div>
-
-        <div id="tracks-tab" class="tab-panel hidden">
-            <p class="tab-note">שבילי עפר אמיתיים מ-OpenStreetMap סביב המיקום שלך. ניווט חי עוקב אחריך על הקו בזמן אמת.</p>
-            <div id="tracks-count" class="dest-count"></div>
-            <ul id="tracks-list" class="dest-list"></ul>
-        </div>
-        <footer class="sheet-footer">
-            פותח ע״י <b>MEREISI GROUP</b> · ISROAD'S<br>
-            נתוני מפה ושבילים: © OpenStreetMap contributors · יעדים: ויקיפדיה (CC BY-SA)
-        </footer>
-    </div>
-
-    <!-- מסך ניווט חי: מוצג בזמן ניווט/הדמיה, מסתיר את שאר הממשק -->
-    <div id="drive-screen" class="hidden">
-        <div id="drive-banner" class="drive-banner">
-            <div id="drive-icon" class="drive-icon">↑</div>
-            <div class="drive-text">
-                <div id="drive-instruction">הישאר על הקו</div>
-                <div id="drive-sub" class="drive-sub"></div>
-            </div>
-        </div>
-        <div id="sim-controls" class="sim-controls hidden">
-            <span class="sim-label">בדיקה:</span>
-            <button class="sim-btn" data-offset="-60">שמאלה 60</button>
-            <button class="sim-btn active" data-offset="0">על הקו</button>
-            <button class="sim-btn" data-offset="60">ימינה 60</button>
-            <button class="sim-btn" data-offset="200">ימינה 200</button>
-            <span class="sim-spacer"></span>
-            <button class="sim-speed active" data-mult="1">×1</button>
-            <button class="sim-speed" data-mult="2">×2</button>
-            <button class="sim-speed" data-mult="4">×4</button>
-        </div>
-        <div id="drive-metrics" class="drive-metrics">
-            <div class="metrics-row">
-                <div class="metric"><b id="m-remain">—</b><span>נותר</span></div>
-                <div class="metric"><b id="m-off">0</b><span>סטייה מ׳</span></div>
-                <div class="metric"><b id="m-speed">0</b><span>קמ״ש</span></div>
-            </div>
-            <div class="actions-row">
-                <button id="btn-waze-to-track" class="waze-track-btn hidden">Waze עד השביל</button>
-                <button id="btn-stop-drive" class="stop-drive-btn">✕ עצור ניווט</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- מסך פרטי לוקיישן (מוסתר כברירת מחדל) -->
-    <div id="location-details" class="hidden">
-        <!-- כפתור הסגירה שפותר את באג ההיתקעות -->
-        <button id="close-btn" class="close-button" onclick="closeLocationDetails()">
-            חזור למפה ✕
-        </button>
-
-        <div class="details-content">
-            <h2 id="loc-title">שם המקום</h2>
-            <p id="loc-desc">תיאור המקום יופיע כאן...</p>
-            <div class="meta-info">
-                <span id="loc-type" class="tag">סוג</span>
-                <span id="loc-dist" class="tag tag-dist"></span>
-            </div>
-            <p class="nav-note">הכפתור פותח את Waze עם ניווט כביש עד הנקודה. זה לא ניווט שטח חי בתוך האפליקציה.</p>
-            <button class="nav-btn" onclick="startNavigation()">נווט לשם ב-Waze</button>
-        </div>
-    </div>
-
-    <!-- סקריפטים -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="geo.js"></script>
-    <script src="app.js"></script>
-    <script src="drive.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script>window.maplibregl||document.write('<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"><\/script>')</script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
+    <script>window.turf||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"><\/script>')</script>
     <script>
-        if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js').catch(() => {});
-            });
+      (function () {
+        var m = [];
+        if (!window.maplibregl) m.push('ספריית המפה (MapLibre)');
+        if (!window.turf) m.push('ספריית החישובים (Turf)');
+        if (m.length) {
+          document.getElementById('boot-msg').innerHTML = 'לא הצלחתי לטעון: ' + m.join(', ') + '.<br><br>בדוק חיבור אינטרנט. אחרי טעינה אחת מוצלחת האפליקציה נשמרת ועובדת גם בלי קליטה.';
+          window.__bootFailed = true;
         }
+      })();
     </script>
-</body>
+    <script src="app.js"></script>
+    <script>
+      (function () {
+        if (window.__bootFailed) return;
+        var tries = 0;
+        var t = setInterval(function () {
+          var root = document.getElementById('root'), b = document.getElementById('boot-msg');
+          if (root && root.childNodes.length) { if (b) b.remove(); clearInterval(t); }
+          else if (++tries > 40 && b) { b.innerHTML = 'האפליקציה לא הצליחה לעלות. רענן את הדף.'; clearInterval(t); }
+        }, 100);
+        window.addEventListener('error', function (e) { var b = document.getElementById('boot-msg'); if (b) b.textContent = 'שגיאה: ' + (e.message || e); });
+      })();
+      if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+        window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+      }
+    </script>
+  </body>
 </html>
