@@ -1,10 +1,10 @@
 /* ISROAD'S service worker: app shell + libraries + map tiles work offline after the first visit. */
-const SHELL = 'shvil-shell-v7';
+const SHELL = 'shvil-shell-2b4a122c7b'; // new build -> new cache, old one deleted on activate
 const LIBS = 'shvil-libs-v1';
 const TILES = 'shvil-tiles-v1'; // shared with src/ui/offline.ts
 const MAX_TILE_ENTRIES = 3000;
 
-const SHELL_FILES = ['./', './index.html', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './favicon.png', './trails.geojson'];
+const SHELL_FILES = ['./', './index.html', './app.2b4a122c7b.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './favicon.png', './trails.geojson'];
 const LIB_HOSTS = ['unpkg.com', 'cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 const TILE_HOSTS = [
   'server.arcgisonline.com', 'tile.openstreetmap.org', 'tile.opentopomap.org', 'israelhiking.osm.org.il',
@@ -16,7 +16,8 @@ self.addEventListener('install', (e) => {
   e.waitUntil(
     (async () => {
       const c = await caches.open(SHELL);
-      await Promise.allSettled(SHELL_FILES.map((f) => c.add(f)));
+      // cache: 'reload' = bypass the browser HTTP cache, so we never precache a stale copy
+      await Promise.allSettled(SHELL_FILES.map((f) => c.add(new Request(f, { cache: 'reload' }))));
       // also warm the CDN libraries the page asks for (best effort; they are cached on first use anyway)
       self.skipWaiting();
     })()
@@ -38,7 +39,8 @@ async function networkFirst(req, cacheName, timeoutMs = 4000) {
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), timeoutMs);
-    const res = await fetch(req, { signal: ctrl.signal });
+    // 'no-cache' = always revalidate with the server, so a fresh deploy shows up immediately
+    const res = await fetch(req.mode === 'navigate' ? req.url : req, { signal: ctrl.signal, cache: 'no-cache' });
     clearTimeout(t);
     if (res && res.ok) cache.put(req, res.clone());
     return res;
