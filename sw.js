@@ -1,10 +1,10 @@
 /* ISROAD'S service worker: app shell + libraries + map tiles work offline after the first visit. */
-const SHELL = 'shvil-shell-2b4a122c7b'; // new build -> new cache, old one deleted on activate
+const SHELL = 'shvil-shell-5ca70b4c22'; // new build -> new cache, old one deleted on activate
 const LIBS = 'shvil-libs-v1';
 const TILES = 'shvil-tiles-v1'; // shared with src/ui/offline.ts
 const MAX_TILE_ENTRIES = 3000;
 
-const SHELL_FILES = ['./', './index.html', './app.2b4a122c7b.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './favicon.png', './trails.geojson'];
+const SHELL_FILES = ['./', './index.html', './app.5ca70b4c22.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './favicon.png', './trails.geojson'];
 const LIB_HOSTS = ['unpkg.com', 'cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 const TILE_HOSTS = [
   'server.arcgisonline.com', 'tile.openstreetmap.org', 'tile.opentopomap.org', 'israelhiking.osm.org.il',
